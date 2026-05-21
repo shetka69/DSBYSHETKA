@@ -27,6 +27,8 @@ async function api(path, options = {}) {
     cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
@@ -63,6 +65,7 @@ function App() {
   const [localStream, setLocalStream] = useState(null);
   const videoRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const messagesRequestRef = useRef(0);
 
   useEffect(() => {
     async function boot() {
@@ -92,12 +95,23 @@ function App() {
       return undefined;
     }
 
-    loadMessages(activeFriend.id);
-    const timer = window.setInterval(() => {
-      loadMessages(activeFriend.id, true);
-    }, 1000);
+    let stopped = false;
+    let timer = null;
 
-    return () => window.clearInterval(timer);
+    async function pollMessages() {
+      await loadMessages(activeFriend.id, true);
+      if (!stopped) {
+        timer = window.setTimeout(pollMessages, 900);
+      }
+    }
+
+    loadMessages(activeFriend.id);
+    timer = window.setTimeout(pollMessages, 900);
+
+    return () => {
+      stopped = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, [activeFriend]);
 
   useEffect(() => {
@@ -201,9 +215,12 @@ function App() {
   }
 
   async function loadMessages(friendId, silent = false) {
+    const requestId = ++messagesRequestRef.current;
     try {
       const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}&t=${Date.now()}`);
-      setMessages(data.messages);
+      if (requestId === messagesRequestRef.current) {
+        setMessages(data.messages);
+      }
     } catch (error) {
       if (!silent) setFriendError(error.message);
     }
