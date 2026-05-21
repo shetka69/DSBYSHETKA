@@ -30,9 +30,12 @@ export async function ensureSchema() {
       username_lookup text not null unique,
       password_hash text not null,
       salt text not null,
+      last_seen timestamptz,
       created_at timestamptz not null default now()
     )
   `;
+
+  await sql`alter table users add column if not exists last_seen timestamptz`;
 
   await sql`
     create table if not exists friendships (
@@ -137,7 +140,12 @@ export async function requireUser(req, res) {
     return null;
   }
 
-  const rows = await db`select id, username from users where id = ${token.sub} limit 1`;
+  const rows = await db`
+    update users
+    set last_seen = now()
+    where id = ${token.sub}
+    returning id, username
+  `;
   if (!rows[0]) {
     json(res, 401, { error: 'Unauthorized' });
     return null;

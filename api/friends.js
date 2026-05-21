@@ -9,7 +9,14 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const friends = await db`
-      select u.id, u.username
+      select
+        u.id,
+        u.username,
+        case
+          when u.last_seen is not null and u.last_seen > now() - interval '45 seconds'
+          then true
+          else false
+        end as online
       from friendships f
       join users u on u.id = f.friend_id
       where f.user_id = ${user.id}

@@ -117,9 +117,11 @@ function App() {
   useEffect(() => {
     if (!profile) return undefined;
 
+    api('/api/presence', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
     const timer = window.setInterval(() => {
+      api('/api/presence', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
       loadFriends();
-    }, 5000);
+    }, 15000);
 
     return () => window.clearInterval(timer);
   }, [profile]);
@@ -373,7 +375,10 @@ function App() {
         <header className="direct-header">
           <div className="contact-avatar">{activeFriend ? activeFriend.username.slice(0, 1).toUpperCase() : '+'}</div>
           <div>
-            <h1>{activeFriend ? activeFriend.username : 'Добавь друга'}</h1>
+            <h1>
+              {activeFriend ? activeFriend.username : 'Добавь друга'}
+              {activeFriend && <span className={`status-dot ${activeFriend.online ? 'online' : 'offline'}`} />}
+            </h1>
             <p>{profile.username}</p>
           </div>
           <button className="icon-button call-now" onClick={() => setCallOpen(true)} disabled={!activeFriend} aria-label="Позвонить">
@@ -435,6 +440,7 @@ function App() {
                   key={friend.id}
                   onClick={() => setActiveFriend(friend)}
                 >
+                  <span className={`status-dot ${friend.online ? 'online' : 'offline'}`} />
                   {friend.username}
                 </button>
               ))}

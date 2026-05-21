@@ -223,6 +223,9 @@ button:disabled,
 }
 
 .direct-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-size: 19px;
 }
@@ -302,6 +305,9 @@ button:disabled,
 }
 
 .friends-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   max-width: 160px;
   overflow: hidden;
   padding: 7px 10px;
@@ -310,6 +316,22 @@ button:disabled,
   border-radius: 999px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(8, 12, 22, 0.9);
+}
+
+.status-dot.online {
+  background: #22c55e;
+}
+
+.status-dot.offline {
+  background: #ef4444;
 }
 
 .friends-list button.active {
