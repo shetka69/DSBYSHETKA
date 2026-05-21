@@ -67,6 +67,7 @@ function App() {
         setLoading(false);
         return;
       }
+
       try {
         const data = await api('/api/me');
         setProfile(data.user);
@@ -77,15 +78,22 @@ function App() {
         setLoading(false);
       }
     }
+
     boot();
   }, []);
 
   useEffect(() => {
     if (!activeFriend) {
       setMessages([]);
-      return;
+      return undefined;
     }
+
     loadMessages(activeFriend.id);
+    const timer = window.setInterval(() => {
+      loadMessages(activeFriend.id, true);
+    }, 3000);
+
+    return () => window.clearInterval(timer);
   }, [activeFriend]);
 
   useEffect(() => {
@@ -114,6 +122,7 @@ function App() {
   async function submitAuth(event) {
     event.preventDefault();
     setAuthError('');
+
     try {
       const data = await api(authMode === 'login' ? '/api/login' : '/api/register', {
         method: 'POST',
@@ -154,9 +163,13 @@ function App() {
     }
   }
 
-  async function loadMessages(friendId) {
-    const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}`);
-    setMessages(data.messages);
+  async function loadMessages(friendId, silent = false) {
+    try {
+      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}`);
+      setMessages(data.messages);
+    } catch (error) {
+      if (!silent) setFriendError(error.message);
+    }
   }
 
   async function sendMessage(event) {
@@ -164,12 +177,30 @@ function App() {
     const text = draft.trim();
     if (!text || !activeFriend) return;
 
-    const data = await api(`/api/messages?friendId=${encodeURIComponent(activeFriend.id)}`, {
-      method: 'POST',
-      body: JSON.stringify({ body: text })
-    });
-    setMessages((current) => [...current, data.message]);
+    const optimisticMessage = {
+      id: `local-${Date.now()}`,
+      body: text,
+      mine: true,
+      createdAt: new Date().toISOString()
+    };
+
+    setFriendError('');
+    setMessages((current) => [...current, optimisticMessage]);
     setDraft('');
+
+    try {
+      const data = await api(`/api/messages?friendId=${encodeURIComponent(activeFriend.id)}`, {
+        method: 'POST',
+        body: JSON.stringify({ body: text })
+      });
+      setMessages((current) =>
+        current.map((message) => (message.id === optimisticMessage.id ? data.message : message))
+      );
+    } catch (error) {
+      setFriendError(error.message);
+      setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
+      setDraft(text);
+    }
   }
 
   function logout() {
@@ -219,7 +250,7 @@ function App() {
           <div>
             <p className="eyebrow">DSBYSHETKA</p>
             <h1>{authMode === 'login' ? 'Вход' : 'Регистрация'}</h1>
-            <p className="auth-copy">Аккаунт хранится в Neon. Ник нужен, чтобы тебя могли добавить в друзья.</p>
+            <p className="auth-copy">Войди или создай аккаунт, чтобы открыть личные сообщения.</p>
           </div>
 
           <form className="auth-form" onSubmit={submitAuth}>
