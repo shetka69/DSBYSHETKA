@@ -12,6 +12,7 @@ import {
   Plus,
   Send,
   Bell,
+  BellOff,
   User,
   Video,
   VideoOff,
@@ -57,7 +58,7 @@ function App() {
   const [activeFriend, setActiveFriend] = useState(null);
   const [friendNick, setFriendNick] = useState('');
   const [friendError, setFriendError] = useState('');
-  const [pushStatus, setPushStatus] = useState('');
+  const [pushStatus, setPushStatus] = useState('default');
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [callOpen, setCallOpen] = useState(false);
@@ -281,23 +282,23 @@ function App() {
   }
 
   async function enablePushNotifications() {
-    setPushStatus('');
+    setPushStatus('loading');
 
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setPushStatus('Браузер не поддерживает push');
+        setPushStatus('unsupported');
         return;
       }
 
       const config = await api('/api/push-config', { method: 'GET' });
       if (!config.publicKey) {
-        setPushStatus('Push ключи не настроены');
+        setPushStatus('missing');
         return;
       }
 
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        setPushStatus('Уведомления запрещены');
+        setPushStatus('denied');
         return;
       }
 
@@ -314,11 +315,17 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ subscription })
       });
-      setPushStatus('Уведомления включены');
+      setPushStatus('enabled');
     } catch {
-      setPushStatus('Не удалось включить уведомления');
+      setPushStatus('error');
     }
   }
+
+  useEffect(() => {
+    if (!profile || !('Notification' in window)) return;
+    if (Notification.permission === 'granted') setPushStatus('enabled');
+    if (Notification.permission === 'denied') setPushStatus('denied');
+  }, [profile]);
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
@@ -432,6 +439,23 @@ function App() {
           <button className="icon-button call-now" onClick={() => setCallOpen(true)} disabled={!activeFriend} aria-label="Позвонить">
             <Phone size={22} />
           </button>
+          <button
+            className={`icon-button notify-icon ${pushStatus === 'enabled' ? 'enabled' : ''}`}
+            onClick={enablePushNotifications}
+            disabled={pushStatus === 'loading'}
+            aria-label="Уведомления"
+            title={
+              pushStatus === 'enabled'
+                ? 'Уведомления включены'
+                : pushStatus === 'denied'
+                  ? 'Уведомления запрещены в браузере'
+                  : pushStatus === 'missing'
+                    ? 'Push ключи не настроены'
+                    : 'Включить уведомления'
+            }
+          >
+            {pushStatus === 'enabled' ? <Bell size={21} /> : <BellOff size={21} />}
+          </button>
           <button className="icon-button logout-button" onClick={logout} aria-label="Выйти">
             <LogOut size={20} />
           </button>
@@ -441,11 +465,6 @@ function App() {
         </header>
 
         <div className="friend-strip">
-          <button className="notify-button" type="button" onClick={enablePushNotifications}>
-            <Bell size={18} />
-            Включить уведомления
-          </button>
-          {pushStatus && <p className="push-status">{pushStatus}</p>}
           <form className="friend-form" onSubmit={addFriend}>
             <input
               value={friendNick}

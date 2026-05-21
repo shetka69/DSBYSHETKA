@@ -253,6 +253,15 @@ button:disabled,
   background: #22c55e;
 }
 
+.notify-icon {
+  color: #cbd5e1;
+}
+
+.notify-icon.enabled {
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.24);
+}
+
 .logout-button {
   color: #cbd5e1;
 }
@@ -273,27 +282,6 @@ button:disabled,
 .friend-form {
   display: flex;
   gap: 8px;
-}
-
-.notify-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 38px;
-  background: rgba(88, 101, 242, 0.22);
-  border: 1px solid rgba(125, 211, 252, 0.18);
-  border-radius: 8px;
-  color: #dbeafe;
-  font-weight: 800;
-}
-
-.push-status {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 12px;
-  text-align: center;
 }
 
 .friend-form input {
