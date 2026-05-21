@@ -24,6 +24,7 @@ async function api(path, options = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
   const response = await fetch(path, {
     ...options,
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -61,6 +62,7 @@ function App() {
   const [mediaStatus, setMediaStatus] = useState('Нажмите микрофон или камеру');
   const [localStream, setLocalStream] = useState(null);
   const videoRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     async function boot() {
@@ -93,7 +95,7 @@ function App() {
     loadMessages(activeFriend.id);
     const timer = window.setInterval(() => {
       loadMessages(activeFriend.id, true);
-    }, 3000);
+    }, 1000);
 
     return () => window.clearInterval(timer);
   }, [activeFriend]);
@@ -107,6 +109,10 @@ function App() {
 
     return () => window.clearInterval(timer);
   }, [profile]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length, activeFriend]);
 
   useEffect(() => {
     if (videoRef.current && localStream) {
@@ -196,7 +202,7 @@ function App() {
 
   async function loadMessages(friendId, silent = false) {
     try {
-      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}`);
+      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}&t=${Date.now()}`);
       setMessages(data.messages);
     } catch (error) {
       if (!silent) setFriendError(error.message);
@@ -441,6 +447,7 @@ function App() {
               </div>
             </article>
           ))}
+          <div ref={messagesEndRef} />
         </div>
 
         <form className="message-bar" onSubmit={sendMessage}>
