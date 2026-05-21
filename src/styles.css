@@ -254,6 +254,11 @@ button:disabled,
   color: #cbd5e1;
 }
 
+.delete-account-button {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.18);
+}
+
 .friend-strip {
   display: grid;
   gap: 8px;
@@ -310,6 +315,59 @@ button:disabled,
 .friends-list button.active {
   color: white;
   background: #5865f2;
+}
+
+.request-list {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+}
+
+.request-list p {
+  margin: 0 0 2px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.request-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.request-item span {
+  overflow: hidden;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-item button {
+  padding: 7px 9px;
+  background: #22c55e;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.request-item button:last-child {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fecaca;
+}
+
+.request-item.pending {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.request-item em {
+  color: #94a3b8;
+  font-size: 12px;
+  font-style: normal;
 }
 
 .chat-body {

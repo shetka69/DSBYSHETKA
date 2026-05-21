@@ -48,6 +48,8 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [outgoingRequests, setOutgoingRequests] = useState([]);
   const [activeFriend, setActiveFriend] = useState(null);
   const [friendNick, setFriendNick] = useState('');
   const [friendError, setFriendError] = useState('');
@@ -97,6 +99,16 @@ function App() {
   }, [activeFriend]);
 
   useEffect(() => {
+    if (!profile) return undefined;
+
+    const timer = window.setInterval(() => {
+      loadFriends();
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [profile]);
+
+  useEffect(() => {
     if (videoRef.current && localStream) {
       videoRef.current.srcObject = localStream;
     }
@@ -141,7 +153,12 @@ function App() {
   async function loadFriends() {
     const data = await api('/api/friends');
     setFriends(data.friends);
-    setActiveFriend((current) => current || data.friends[0] || null);
+    setIncomingRequests(data.incoming || []);
+    setOutgoingRequests(data.outgoing || []);
+    setActiveFriend((current) => {
+      if (current && data.friends.some((friend) => friend.id === current.id)) return current;
+      return data.friends[0] || null;
+    });
   }
 
   async function addFriend(event) {
@@ -157,7 +174,21 @@ function App() {
       });
       setFriendNick('');
       await loadFriends();
-      setActiveFriend(data.friend);
+      if (data.friend) setActiveFriend(data.friend);
+    } catch (error) {
+      setFriendError(error.message);
+    }
+  }
+
+  async function answerFriendRequest(requestId, action) {
+    setFriendError('');
+    try {
+      const data = await api('/api/friends', {
+        method: 'PATCH',
+        body: JSON.stringify({ requestId, action })
+      });
+      await loadFriends();
+      if (data.friend) setActiveFriend(data.friend);
     } catch (error) {
       setFriendError(error.message);
     }
@@ -196,6 +227,7 @@ function App() {
       setMessages((current) =>
         current.map((message) => (message.id === optimisticMessage.id ? data.message : message))
       );
+      await loadMessages(activeFriend.id, true);
     } catch (error) {
       setFriendError(error.message);
       setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
@@ -203,10 +235,20 @@ function App() {
     }
   }
 
+  async function deleteAccount() {
+    const confirmed = window.confirm('Удалить аккаунт? Сообщения, друзья и заявки будут удалены без восстановления.');
+    if (!confirmed) return;
+
+    await api('/api/account', { method: 'DELETE' });
+    logout();
+  }
+
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     setProfile(null);
     setFriends([]);
+    setIncomingRequests([]);
+    setOutgoingRequests([]);
     setActiveFriend(null);
     setMessages([]);
   }
@@ -314,6 +356,9 @@ function App() {
           <button className="icon-button logout-button" onClick={logout} aria-label="Выйти">
             <LogOut size={20} />
           </button>
+          <button className="icon-button delete-account-button" onClick={deleteAccount} aria-label="Удалить аккаунт">
+            <X size={20} />
+          </button>
         </header>
 
         <div className="friend-strip">
@@ -329,6 +374,33 @@ function App() {
             </button>
           </form>
           {friendError && <p className="friend-error">{friendError}</p>}
+          {incomingRequests.length > 0 && (
+            <div className="request-list">
+              <p>Заявки в друзья</p>
+              {incomingRequests.map((request) => (
+                <div className="request-item" key={request.id}>
+                  <span>{request.username}</span>
+                  <button type="button" onClick={() => answerFriendRequest(request.id, 'accept')}>
+                    Принять
+                  </button>
+                  <button type="button" onClick={() => answerFriendRequest(request.id, 'decline')}>
+                    Отклонить
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {outgoingRequests.length > 0 && (
+            <div className="request-list compact">
+              <p>Отправлено</p>
+              {outgoingRequests.map((request) => (
+                <div className="request-item pending" key={request.id}>
+                  <span>{request.username}</span>
+                  <em>ждет ответа</em>
+                </div>
+              ))}
+            </div>
+          )}
           {friends.length > 0 && (
             <div className="friends-list">
               {friends.map((friend) => (

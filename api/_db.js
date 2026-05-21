@@ -44,6 +44,20 @@ export async function ensureSchema() {
   `;
 
   await sql`
+    create table if not exists friend_requests (
+      id bigserial primary key,
+      sender_id uuid not null references users(id) on delete cascade,
+      receiver_id uuid not null references users(id) on delete cascade,
+      status text not null default 'pending',
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      unique (sender_id, receiver_id),
+      check (sender_id <> receiver_id),
+      check (status in ('pending', 'accepted', 'declined'))
+    )
+  `;
+
+  await sql`
     create table if not exists messages (
       id bigserial primary key,
       sender_id uuid not null references users(id) on delete cascade,
