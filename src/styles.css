@@ -623,8 +623,20 @@ button:disabled,
   }
 
   .direct-header {
+    gap: 8px;
     min-height: 66px;
     padding: 10px 12px;
+  }
+
+  .direct-header > div:nth-child(2) {
+    min-width: 0;
+  }
+
+  .direct-header h1,
+  .direct-header p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .contact-avatar {
@@ -633,8 +645,11 @@ button:disabled,
     border-radius: 14px;
   }
 
-  .logout-button {
-    display: none;
+  .icon-button,
+  .send-button,
+  .close-call {
+    width: 38px;
+    height: 38px;
   }
 
   .chat-body {

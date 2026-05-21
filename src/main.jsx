@@ -281,12 +281,44 @@ function App() {
     return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
   }
 
-  async function enablePushNotifications() {
+  async function getPushSubscription() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    return registration.pushManager.getSubscription();
+  }
+
+  async function syncPushStatus() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setPushStatus('unsupported');
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      setPushStatus('denied');
+      return;
+    }
+
+    const subscription = await getPushSubscription();
+    setPushStatus(subscription ? 'enabled' : 'default');
+  }
+
+  async function togglePushNotifications() {
     setPushStatus('loading');
 
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         setPushStatus('unsupported');
+        return;
+      }
+
+      const existing = await getPushSubscription();
+      if (existing) {
+        await api('/api/push-subscribe', {
+          method: 'DELETE',
+          body: JSON.stringify({ subscription: existing })
+        });
+        await existing.unsubscribe();
+        setPushStatus('default');
         return;
       }
 
@@ -303,13 +335,10 @@ function App() {
       }
 
       const registration = await navigator.serviceWorker.register('/sw.js');
-      const existing = await registration.pushManager.getSubscription();
-      const subscription =
-        existing ||
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(config.publicKey)
-        }));
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey)
+      });
 
       await api('/api/push-subscribe', {
         method: 'POST',
@@ -322,9 +351,8 @@ function App() {
   }
 
   useEffect(() => {
-    if (!profile || !('Notification' in window)) return;
-    if (Notification.permission === 'granted') setPushStatus('enabled');
-    if (Notification.permission === 'denied') setPushStatus('denied');
+    if (!profile) return;
+    syncPushStatus().catch(() => setPushStatus('error'));
   }, [profile]);
 
   function logout() {
@@ -441,12 +469,12 @@ function App() {
           </button>
           <button
             className={`icon-button notify-icon ${pushStatus === 'enabled' ? 'enabled' : ''}`}
-            onClick={enablePushNotifications}
+            onClick={togglePushNotifications}
             disabled={pushStatus === 'loading'}
             aria-label="Уведомления"
             title={
               pushStatus === 'enabled'
-                ? 'Уведомления включены'
+                ? 'Отключить уведомления'
                 : pushStatus === 'denied'
                   ? 'Уведомления запрещены в браузере'
                   : pushStatus === 'missing'

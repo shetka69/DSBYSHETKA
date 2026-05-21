@@ -11,6 +11,16 @@ if (publicKey && privateKey) {
 export async function notifyUser(db, userId, payload) {
   if (!publicKey || !privateKey) return;
 
+  const active = await db`
+    select 1
+    from users
+    where id = ${userId}
+      and last_seen is not null
+      and last_seen > now() - interval '25 seconds'
+    limit 1
+  `;
+  if (active[0]) return;
+
   const rows = await db`
     select id, subscription
     from push_subscriptions

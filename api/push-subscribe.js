@@ -4,8 +4,6 @@ export default async function handler(req, res) {
   const user = await requireUser(req, res);
   if (!user) return;
 
-  if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
-
   const db = requireDb(res);
   if (!db) return;
 
@@ -14,6 +12,16 @@ export default async function handler(req, res) {
   if (!subscription?.endpoint) {
     return json(res, 400, { error: 'Push subscription is required' });
   }
+
+  if (req.method === 'DELETE') {
+    await db`
+      delete from push_subscriptions
+      where user_id = ${user.id} and endpoint = ${subscription.endpoint}
+    `;
+    return json(res, 200, { ok: true });
+  }
+
+  if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
 
   await db`
     insert into push_subscriptions (user_id, endpoint, subscription)
