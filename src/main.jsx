@@ -59,6 +59,7 @@ function App() {
   const [friendNick, setFriendNick] = useState('');
   const [friendError, setFriendError] = useState('');
   const [pushStatus, setPushStatus] = useState('default');
+  const [pushMessage, setPushMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [callOpen, setCallOpen] = useState(false);
@@ -297,31 +298,48 @@ function App() {
 
   async function getPushSubscription() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
-    const registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.register('/sw.js');
+    const registration = await navigator.serviceWorker.ready;
     return registration.pushManager.getSubscription();
+  }
+
+  function isIosBrowserWithoutStandalonePush() {
+    const ua = navigator.userAgent || '';
+    const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    return isIos && !standalone;
   }
 
   async function syncPushStatus() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
       setPushStatus('unsupported');
+      setPushMessage('Уведомления не поддерживаются этим браузером');
       return;
     }
 
     if (Notification.permission === 'denied') {
       setPushStatus('denied');
+      setPushMessage('Уведомления запрещены в настройках браузера');
       return;
     }
 
     const subscription = await getPushSubscription();
     setPushStatus(subscription ? 'enabled' : 'default');
+    setPushMessage(subscription ? 'Уведомления включены' : '');
   }
 
   async function togglePushNotifications() {
     setPushStatus('loading');
+    setPushMessage('Проверяем уведомления...');
 
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         setPushStatus('unsupported');
+        setPushMessage(
+          isIosBrowserWithoutStandalonePush()
+            ? 'На iPhone добавь сайт на экран Домой и открой его оттуда'
+            : 'Этот браузер не поддерживает push'
+        );
         return;
       }
 
@@ -333,22 +351,26 @@ function App() {
         });
         await existing.unsubscribe();
         setPushStatus('default');
+        setPushMessage('Уведомления выключены');
         return;
       }
 
       const config = await api('/api/push-config', { method: 'GET' });
       if (!config.publicKey) {
         setPushStatus('missing');
+        setPushMessage('Push ключи не настроены в Vercel');
         return;
       }
 
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         setPushStatus('denied');
+        setPushMessage('Разреши уведомления в настройках браузера');
         return;
       }
 
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.register('/sw.js');
+      const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(config.publicKey)
@@ -359,8 +381,14 @@ function App() {
         body: JSON.stringify({ subscription })
       });
       setPushStatus('enabled');
+      setPushMessage('Уведомления включены');
     } catch {
       setPushStatus('error');
+      setPushMessage(
+        isIosBrowserWithoutStandalonePush()
+          ? 'На iPhone установи сайт на экран Домой и включи уведомления там'
+          : 'Не удалось включить уведомления'
+      );
     }
   }
 
@@ -505,6 +533,7 @@ function App() {
             <X size={20} />
           </button>
         </header>
+        {pushMessage && <div className={`push-banner ${pushStatus === 'enabled' ? 'ok' : ''}`}>{pushMessage}</div>}
 
         <div className="friend-strip">
           <form className="friend-form" onSubmit={addFriend}>
