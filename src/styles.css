@@ -617,6 +617,8 @@ button:disabled,
 
   .phone-app {
     display: block;
+    height: 100dvh;
+    overflow: hidden;
     padding: 0;
   }
 

@@ -31,11 +31,13 @@ export async function ensureSchema() {
       password_hash text not null,
       salt text not null,
       last_seen timestamptz,
+      active_until timestamptz,
       created_at timestamptz not null default now()
     )
   `;
 
   await sql`alter table users add column if not exists last_seen timestamptz`;
+  await sql`alter table users add column if not exists active_until timestamptz`;
 
   await sql`
     create table if not exists friendships (
@@ -151,12 +153,7 @@ export async function requireUser(req, res) {
     return null;
   }
 
-  const rows = await db`
-    update users
-    set last_seen = now()
-    where id = ${token.sub}
-    returning id, username
-  `;
+  const rows = await db`select id, username from users where id = ${token.sub} limit 1`;
   if (!rows[0]) {
     json(res, 401, { error: 'Unauthorized' });
     return null;

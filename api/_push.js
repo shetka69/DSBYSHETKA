@@ -15,8 +15,8 @@ export async function notifyUser(db, userId, payload) {
     select 1
     from users
     where id = ${userId}
-      and last_seen is not null
-      and last_seen > now() - interval '25 seconds'
+      and active_until is not null
+      and active_until > now()
     limit 1
   `;
   if (active[0]) return;

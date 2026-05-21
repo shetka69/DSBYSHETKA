@@ -67,7 +67,7 @@ function App() {
   const [mediaStatus, setMediaStatus] = useState('Нажмите микрофон или камеру');
   const [localStream, setLocalStream] = useState(null);
   const videoRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const chatBodyRef = useRef(null);
   const messagesRequestRef = useRef(0);
 
   useEffect(() => {
@@ -120,17 +120,31 @@ function App() {
   useEffect(() => {
     if (!profile) return undefined;
 
-    api('/api/presence', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+    function pingPresence() {
+      api('/api/presence', {
+        method: 'POST',
+        body: JSON.stringify({ visible: document.visibilityState === 'visible' })
+      }).catch(() => {});
+    }
+
+    pingPresence();
     const timer = window.setInterval(() => {
-      api('/api/presence', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+      if (document.visibilityState === 'visible') pingPresence();
       loadFriends();
     }, 15000);
+    document.addEventListener('visibilitychange', pingPresence);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', pingPresence);
+    };
   }, [profile]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: 'end' });
+    const chatBody = chatBodyRef.current;
+    if (chatBody) {
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
   }, [messages.length, activeFriend]);
 
   useEffect(() => {
@@ -548,7 +562,7 @@ function App() {
           )}
         </div>
 
-        <div className="chat-body" aria-live="polite">
+        <div className="chat-body" ref={chatBodyRef} aria-live="polite">
           {!activeFriend && (
             <div className="empty-state">
               <h2>Чат пустой</h2>
@@ -573,7 +587,6 @@ function App() {
               </div>
             </article>
           ))}
-          <div ref={messagesEndRef} />
         </div>
 
         <form className="message-bar" onSubmit={sendMessage}>
