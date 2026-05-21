@@ -217,7 +217,10 @@ function App() {
   async function loadMessages(friendId, silent = false) {
     const requestId = ++messagesRequestRef.current;
     try {
-      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}&t=${Date.now()}`);
+      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}&t=${Date.now()}`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'list' })
+      });
       if (requestId === messagesRequestRef.current) {
         setMessages(data.messages);
       }

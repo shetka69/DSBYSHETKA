@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   `;
   if (!allowed[0]) return json(res, 403, { error: 'Friend is not in your list' });
 
-  if (req.method === 'GET') {
+  async function listMessages() {
     const rows = await db`
       select id, sender_id, receiver_id, body, created_at
       from messages
@@ -37,8 +37,16 @@ export default async function handler(req, res) {
     });
   }
 
+  if (req.method === 'GET') {
+    return listMessages();
+  }
+
   if (req.method === 'POST') {
     const body = await readBody(req);
+    if (body.action === 'list') {
+      return listMessages();
+    }
+
     const text = String(body.body || '').trim();
     if (!text) return json(res, 400, { error: 'Message is empty' });
     if (text.length > 2000) return json(res, 400, { error: 'Message is too long' });
