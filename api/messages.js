@@ -1,4 +1,5 @@
 import { json, readBody, requireUser } from './_db.js';
+import { notifyUser } from './_push.js';
 
 export default async function handler(req, res) {
   const user = await requireUser(req, res);
@@ -57,6 +58,12 @@ export default async function handler(req, res) {
       returning id, sender_id, receiver_id, body, created_at
     `;
     const message = rows[0];
+    await notifyUser(db, friendId, {
+      title: user.username,
+      body: text,
+      url: '/'
+    });
+
     return json(res, 201, {
       message: {
         id: message.id,

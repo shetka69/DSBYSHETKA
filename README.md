@@ -11,6 +11,9 @@ Backend сделан как Vercel Serverless Functions и использует 
 ```bash
 DATABASE_URL=postgresql://...
 APP_SECRET=replace-with-long-random-string
+WEB_PUSH_PUBLIC_KEY=replace-with-vapid-public-key
+WEB_PUSH_PRIVATE_KEY=replace-with-vapid-private-key
+WEB_PUSH_SUBJECT=mailto:you@example.com
 ```
 
 ## Запуск

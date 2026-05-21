@@ -71,6 +71,17 @@ export async function ensureSchema() {
     )
   `;
 
+  await sql`
+    create table if not exists push_subscriptions (
+      id bigserial primary key,
+      user_id uuid not null references users(id) on delete cascade,
+      endpoint text not null unique,
+      subscription jsonb not null,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    )
+  `;
+
   schemaReady = true;
 }
 

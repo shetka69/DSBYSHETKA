@@ -11,6 +11,7 @@ import {
   PhoneOff,
   Plus,
   Send,
+  Bell,
   User,
   Video,
   VideoOff,
@@ -56,6 +57,7 @@ function App() {
   const [activeFriend, setActiveFriend] = useState(null);
   const [friendNick, setFriendNick] = useState('');
   const [friendError, setFriendError] = useState('');
+  const [pushStatus, setPushStatus] = useState('');
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [callOpen, setCallOpen] = useState(false);
@@ -271,6 +273,53 @@ function App() {
     logout();
   }
 
+  function urlBase64ToUint8Array(value) {
+    const padding = '='.repeat((4 - (value.length % 4)) % 4);
+    const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+  }
+
+  async function enablePushNotifications() {
+    setPushStatus('');
+
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setPushStatus('Браузер не поддерживает push');
+        return;
+      }
+
+      const config = await api('/api/push-config', { method: 'GET' });
+      if (!config.publicKey) {
+        setPushStatus('Push ключи не настроены');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus('Уведомления запрещены');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      const existing = await registration.pushManager.getSubscription();
+      const subscription =
+        existing ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(config.publicKey)
+        }));
+
+      await api('/api/push-subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ subscription })
+      });
+      setPushStatus('Уведомления включены');
+    } catch {
+      setPushStatus('Не удалось включить уведомления');
+    }
+  }
+
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     setProfile(null);
@@ -377,7 +426,6 @@ function App() {
           <div>
             <h1>
               {activeFriend ? activeFriend.username : 'Добавь друга'}
-              {activeFriend && <span className={`status-dot ${activeFriend.online ? 'online' : 'offline'}`} />}
             </h1>
             <p>{profile.username}</p>
           </div>
@@ -393,6 +441,11 @@ function App() {
         </header>
 
         <div className="friend-strip">
+          <button className="notify-button" type="button" onClick={enablePushNotifications}>
+            <Bell size={18} />
+            Включить уведомления
+          </button>
+          {pushStatus && <p className="push-status">{pushStatus}</p>}
           <form className="friend-form" onSubmit={addFriend}>
             <input
               value={friendNick}
