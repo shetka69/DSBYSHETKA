@@ -606,13 +606,9 @@ function App() {
           )}
           {messages.map((message) => (
             <article className={`bubble-row ${message.mine ? 'mine' : ''}`} key={message.id}>
-              {!message.mine && <div className="mini-avatar">{activeFriend?.username.slice(0, 1).toUpperCase()}</div>}
               <div className="bubble">
-                <div className="bubble-meta">
-                  <strong>{message.mine ? profile.username : activeFriend?.username}</strong>
-                  <span>{formatTime(message.createdAt)}</span>
-                </div>
                 <p>{message.body}</p>
+                <span className="bubble-time">{formatTime(message.createdAt)}</span>
               </div>
             </article>
           ))}

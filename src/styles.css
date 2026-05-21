@@ -206,7 +206,6 @@ button:disabled,
 }
 
 .contact-avatar,
-.mini-avatar,
 .caller-avatar {
   display: grid;
   place-items: center;
@@ -467,14 +466,6 @@ button:disabled,
   align-self: flex-end;
 }
 
-.mini-avatar {
-  width: 30px;
-  height: 30px;
-  background: #7c3aed;
-  border-radius: 10px;
-  font-size: 13px;
-}
-
 .bubble {
   padding: 10px 12px;
   background: rgba(30, 41, 59, 0.9);
@@ -488,29 +479,21 @@ button:disabled,
   border-radius: 14px 14px 4px 14px;
 }
 
-.bubble-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.bubble-meta strong {
-  font-size: 13px;
-}
-
-.bubble-meta span {
-  color: #a7b4c7;
-  font-size: 11px;
-}
-
-.mine .bubble-meta span {
-  color: rgba(255, 255, 255, 0.72);
-}
-
 .bubble p {
   margin: 0;
   line-height: 1.45;
+}
+
+.bubble-time {
+  display: block;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+  text-align: right;
+}
+
+.mine .bubble-time {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .message-bar {
