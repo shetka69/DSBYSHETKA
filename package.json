@@ -6,12 +6,15 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "start": "node server.js",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.544.0",
+    "mime-types": "^3.0.2",
+    "mime-types": "^3.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "typescript": "^5.9.2",

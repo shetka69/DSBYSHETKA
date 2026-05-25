@@ -23,6 +23,30 @@ npm install
 npx vercel dev
 ```
 
+## Запуск как обычный Node-сервер
+
+Подходит для Amvera:
+
+```bash
+npm install
+npm run build
+npm run start
+```
+
+Сервер слушает порт `8080` или значение переменной `PORT`.
+
+## Деплой на Amvera
+
+В репозитории есть `amvera.yml`. В Amvera нужно выбрать Node.js Server, подключить GitHub-репозиторий и добавить переменные окружения:
+
+```bash
+DATABASE_URL=postgresql://...
+APP_SECRET=replace-with-long-random-string
+WEB_PUSH_PUBLIC_KEY=replace-with-vapid-public-key
+WEB_PUSH_PRIVATE_KEY=replace-with-vapid-private-key
+WEB_PUSH_SUBJECT=mailto:you@example.com
+```
+
 ## Деплой на Vercel
 
 1. Залить проект в репозиторий `DSBYSHETKA`.
