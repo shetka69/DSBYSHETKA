@@ -678,14 +678,19 @@ button:disabled,
 
   .phone-app {
     display: block;
-    height: var(--app-height);
+    height: 100svh;
+    min-height: 100svh;
     overflow: hidden;
     padding: 0;
   }
 
   .direct-chat {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    height: var(--app-height);
+    height: 100svh;
+    min-height: 100svh;
+    max-height: 100svh;
     border: 0;
     border-radius: 0;
   }
@@ -732,6 +737,8 @@ button:disabled,
   }
 
   .chat-body {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 14px 10px;
   }
 
@@ -744,6 +751,10 @@ button:disabled,
   }
 
   .message-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex: 0 0 auto;
     margin: 0;
     padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
     border-right: 0;

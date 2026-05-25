@@ -77,16 +77,15 @@ function App() {
 
   useEffect(() => {
     function syncViewportHeight() {
-      const height = window.visualViewport?.height || window.innerHeight;
-      document.documentElement.style.setProperty('--app-height', `${height}px`);
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
     }
 
     syncViewportHeight();
-    window.visualViewport?.addEventListener('resize', syncViewportHeight);
+    window.addEventListener('orientationchange', syncViewportHeight);
     window.addEventListener('resize', syncViewportHeight);
 
     return () => {
-      window.visualViewport?.removeEventListener('resize', syncViewportHeight);
+      window.removeEventListener('orientationchange', syncViewportHeight);
       window.removeEventListener('resize', syncViewportHeight);
     };
   }, []);
