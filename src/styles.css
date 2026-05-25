@@ -33,7 +33,7 @@ button {
 
 .auth-page,
 .phone-app {
-  min-height: 100vh;
+  min-height: var(--app-height);
   background:
     linear-gradient(rgba(7, 10, 18, 0.82), rgba(7, 10, 18, 0.94)),
     radial-gradient(circle at 18% 12%, rgba(88, 101, 242, 0.3), transparent 28%),
@@ -188,7 +188,7 @@ button:disabled,
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   width: min(900px, 100%);
-  height: min(860px, calc(100vh - 40px));
+  height: min(860px, calc(var(--app-height) - 40px));
   overflow: hidden;
   contain: layout paint;
   background: rgba(8, 12, 22, 0.88);
@@ -273,6 +273,7 @@ button:disabled,
 }
 
 .push-banner {
+  min-height: 29px;
   padding: 7px 12px;
   color: #fde68a;
   background: rgba(245, 158, 11, 0.12);
@@ -291,7 +292,7 @@ button:disabled,
   display: grid;
   gap: 8px;
   padding: 10px 12px;
-  max-height: 220px;
+  max-height: 190px;
   overflow-y: auto;
   background: rgba(15, 23, 42, 0.62);
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
@@ -669,7 +670,10 @@ button:disabled,
 @media (max-width: 760px) {
   html,
   body {
-    min-height: 100%;
+    width: 100%;
+    height: var(--app-height);
+    min-height: var(--app-height);
+    overflow: hidden;
   }
 
   .phone-app {
@@ -691,6 +695,16 @@ button:disabled,
     align-items: flex-end;
     min-height: calc(72px + env(safe-area-inset-top));
     padding: calc(14px + env(safe-area-inset-top)) 12px 10px;
+    flex: 0 0 auto;
+  }
+
+  .push-banner {
+    flex: 0 0 auto;
+  }
+
+  .friend-strip {
+    flex: 0 0 auto;
+    max-height: 154px;
   }
 
   .direct-header > div:nth-child(2) {

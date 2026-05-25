@@ -222,17 +222,21 @@ function App() {
     }
   }
 
-  async function loadFriends() {
+  async function loadFriends(options = {}) {
+    const { preserveActive = true } = options;
     const data = await api('/api/friends');
     setFriends(data.friends);
     setIncomingRequests(data.incoming || []);
     setOutgoingRequests(data.outgoing || []);
     setActiveFriend((current) => {
+      if (!preserveActive) return data.friends[0] || null;
       if (current) {
         const updated = data.friends.find((friend) => friend.id === current.id);
-        if (updated) return updated;
+        if (updated) {
+          return current.online === updated.online && current.username === updated.username ? current : updated;
+        }
       }
-      return data.friends[0] || null;
+      return current || data.friends[0] || null;
     });
   }
 
@@ -293,7 +297,13 @@ function App() {
       });
       if (requestId === messagesRequestRef.current) {
         setIsFriendTyping(Boolean(data.friendTyping));
-        setMessages((current) => (incremental ? mergeMessages(current, data.messages) : data.messages));
+        if (incremental) {
+          if (data.messages.length) {
+            setMessages((current) => mergeMessages(current, data.messages));
+          }
+        } else {
+          setMessages(data.messages);
+        }
       }
     } catch (error) {
       if (!silent) setFriendError(error.message);
