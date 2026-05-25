@@ -13,6 +13,7 @@ import {
   Send,
   Bell,
   BellOff,
+  Settings,
   User,
   Video,
   VideoOff,
@@ -60,6 +61,9 @@ function App() {
   const [friendError, setFriendError] = useState('');
   const [pushStatus, setPushStatus] = useState('default');
   const [pushMessage, setPushMessage] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({ username: '', currentPassword: '', newPassword: '' });
+  const [profileMessage, setProfileMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [isFriendTyping, setIsFriendTyping] = useState(false);
   const [draft, setDraft] = useState('');
@@ -383,6 +387,31 @@ function App() {
     logout();
   }
 
+  async function saveProfile(event) {
+    event.preventDefault();
+    setProfileMessage('');
+
+    try {
+      const data = await api('/api/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(profileDraft)
+      });
+      localStorage.setItem(TOKEN_KEY, data.token);
+      setProfile(data.user);
+      setProfileDraft({ username: data.user.username, currentPassword: '', newPassword: '' });
+      setProfileMessage('Профиль обновлен');
+      await loadFriends();
+    } catch (error) {
+      setProfileMessage(error.message);
+    }
+  }
+
+  function openProfile() {
+    setProfileDraft({ username: profile.username, currentPassword: '', newPassword: '' });
+    setProfileMessage('');
+    setProfileOpen(true);
+  }
+
   function urlBase64ToUint8Array(value) {
     const padding = '='.repeat((4 - (value.length % 4)) % 4);
     const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -620,11 +649,11 @@ function App() {
           >
             {pushStatus === 'enabled' ? <Bell size={21} /> : <BellOff size={21} />}
           </button>
+          <button className="icon-button profile-button" onClick={openProfile} aria-label="Профиль">
+            <Settings size={20} />
+          </button>
           <button className="icon-button logout-button" onClick={logout} aria-label="Выйти">
             <LogOut size={20} />
-          </button>
-          <button className="icon-button delete-account-button" onClick={deleteAccount} aria-label="Удалить аккаунт">
-            <X size={20} />
           </button>
         </header>
         {pushMessage && <div className={`push-banner ${pushStatus === 'enabled' ? 'ok' : ''}`}>{pushMessage}</div>}
@@ -775,6 +804,53 @@ function App() {
               </button>
             </div>
           </div>
+        </section>
+      )}
+
+      {profileOpen && (
+        <section className="profile-overlay" role="dialog" aria-modal="true" aria-label="Профиль">
+          <form className="profile-sheet" onSubmit={saveProfile}>
+            <button className="close-profile" type="button" onClick={() => setProfileOpen(false)} aria-label="Закрыть профиль">
+              <X size={22} />
+            </button>
+            <div>
+              <p className="eyebrow">Профиль</p>
+              <h2>{profile.username}</h2>
+            </div>
+            <label>
+              <span>Новый ник</span>
+              <input
+                value={profileDraft.username}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, username: event.target.value }))}
+                placeholder="nickname"
+              />
+            </label>
+            <label>
+              <span>Текущий пароль</span>
+              <input
+                value={profileDraft.currentPassword}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, currentPassword: event.target.value }))}
+                placeholder="Нужен для изменений"
+                type="password"
+              />
+            </label>
+            <label>
+              <span>Новый пароль</span>
+              <input
+                value={profileDraft.newPassword}
+                onChange={(event) => setProfileDraft((current) => ({ ...current, newPassword: event.target.value }))}
+                placeholder="Оставь пустым, если не менять"
+                type="password"
+              />
+            </label>
+            {profileMessage && <p className="profile-message">{profileMessage}</p>}
+            <button className="primary-action" type="submit" disabled={!profileDraft.username.trim() || !profileDraft.currentPassword}>
+              Сохранить
+            </button>
+            <button className="delete-account-action" type="button" onClick={deleteAccount}>
+              Удалить аккаунт
+            </button>
+          </form>
         </section>
       )}
     </main>

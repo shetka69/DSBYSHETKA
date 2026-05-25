@@ -114,6 +114,11 @@ export function publicUser(user) {
   };
 }
 
+export async function updateTokenUser(db, userId) {
+  const rows = await db`select id, username from users where id = ${userId} limit 1`;
+  return rows[0] || null;
+}
+
 export function hashPassword(password, salt = randomBytes(16).toString('hex')) {
   const passwordHash = pbkdf2Sync(String(password), salt, 120000, 32, 'sha256').toString('hex');
   return { passwordHash, salt };

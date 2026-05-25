@@ -20,6 +20,7 @@ const apiRoutes = new Map([
   ['/api/presence', 'presence.js'],
   ['/api/push-config', 'push-config.js'],
   ['/api/push-subscribe', 'push-subscribe.js'],
+  ['/api/profile', 'profile.js'],
   ['/api/register', 'register.js']
 ]);
 
