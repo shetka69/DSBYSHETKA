@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import mime from 'mime-types';
@@ -21,6 +22,26 @@ const apiRoutes = new Map([
   ['/api/push-subscribe', 'push-subscribe.js'],
   ['/api/register', 'register.js']
 ]);
+
+async function ensureBuildOutput() {
+  try {
+    const indexPath = path.join(distDir, 'index.html');
+    const indexStat = await stat(indexPath);
+    if (indexStat.isFile()) return;
+  } catch {
+    console.log('Build output not found, running npm run build...');
+  }
+
+  const result = spawnSync('npm', ['run', 'build'], {
+    cwd: __dirname,
+    shell: process.platform === 'win32',
+    stdio: 'inherit'
+  });
+
+  if (result.status !== 0) {
+    throw new Error('Build failed during startup');
+  }
+}
 
 function sendJson(res, status, data) {
   res.statusCode = status;
@@ -91,9 +112,16 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, '0.0.0.0', () => {
-  console.log(`DSBYSHETKA server listening on ${port}`);
-});
+ensureBuildOutput()
+  .then(() => {
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`DSBYSHETKA server listening on ${port}`);
+    });
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 
 function shutdown(signal) {
   console.log(`Received ${signal}, shutting down`);

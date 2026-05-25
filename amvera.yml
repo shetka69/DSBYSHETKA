@@ -6,6 +6,14 @@ meta:
 
 build:
   additionalCommands: npm run build
+  artifacts:
+    "api": /
+    "dist": /
+    "public": /
+    "node_modules": /
+    "server.js": /
+    "package.json": /
+    "package-lock.json": /
 
 run:
   scriptName: server.js
