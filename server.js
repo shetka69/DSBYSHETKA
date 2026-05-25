@@ -75,7 +75,7 @@ async function handleStatic(req, res, url) {
   }
 }
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
   try {
@@ -89,6 +89,18 @@ createServer(async (req, res) => {
     console.error(error);
     if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
   }
-}).listen(port, '0.0.0.0', () => {
+});
+
+server.listen(port, '0.0.0.0', () => {
   console.log(`DSBYSHETKA server listening on ${port}`);
 });
+
+function shutdown(signal) {
+  console.log(`Received ${signal}, shutting down`);
+  server.close(() => {
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
