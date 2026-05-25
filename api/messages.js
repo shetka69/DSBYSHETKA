@@ -20,15 +20,28 @@ export default async function handler(req, res) {
   if (!allowed[0]) return json(res, 403, { error: 'Friend is not in your list' });
 
   async function listMessages() {
+    const afterId = Number(req.query?.afterId || 0);
     const rows = await db`
       select id, sender_id, receiver_id, body, created_at
       from messages
-      where (sender_id = ${user.id} and receiver_id = ${friendId})
-         or (sender_id = ${friendId} and receiver_id = ${user.id})
+      where (
+        (sender_id = ${user.id} and receiver_id = ${friendId})
+        or (sender_id = ${friendId} and receiver_id = ${user.id})
+      )
+      and id > ${afterId}
       order by created_at asc
-      limit 100
+      limit ${afterId > 0 ? 50 : 100}
+    `;
+    const typingRows = await db`
+      select 1
+      from typing_status
+      where user_id = ${friendId}
+        and friend_id = ${user.id}
+        and typing_until > now()
+      limit 1
     `;
     return json(res, 200, {
+      friendTyping: Boolean(typingRows[0]),
       messages: rows.map((row) => ({
         id: row.id,
         body: row.body,
@@ -46,6 +59,18 @@ export default async function handler(req, res) {
     const body = await readBody(req);
     if (body.action === 'list') {
       return listMessages();
+    }
+
+    if (body.action === 'typing') {
+      const isTyping = Boolean(body.typing);
+      const seconds = isTyping ? 4 : 0;
+      await db`
+        insert into typing_status (user_id, friend_id, typing_until)
+        values (${user.id}, ${friendId}, now() + (${seconds} * interval '1 second'))
+        on conflict (user_id, friend_id)
+        do update set typing_until = excluded.typing_until, updated_at = now()
+      `;
+      return json(res, 200, { ok: true });
     }
 
     const text = String(body.body || '').trim();

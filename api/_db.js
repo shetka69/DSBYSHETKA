@@ -84,6 +84,22 @@ export async function ensureSchema() {
     )
   `;
 
+  await sql`
+    create table if not exists typing_status (
+      user_id uuid not null references users(id) on delete cascade,
+      friend_id uuid not null references users(id) on delete cascade,
+      typing_until timestamptz not null,
+      updated_at timestamptz not null default now(),
+      primary key (user_id, friend_id),
+      check (user_id <> friend_id)
+    )
+  `;
+
+  await sql`create index if not exists messages_pair_id_idx on messages (sender_id, receiver_id, id)`;
+  await sql`create index if not exists friendships_user_idx on friendships (user_id)`;
+  await sql`create index if not exists friend_requests_receiver_status_idx on friend_requests (receiver_id, status)`;
+  await sql`create index if not exists typing_status_friend_until_idx on typing_status (friend_id, typing_until)`;
+
   schemaReady = true;
 }
 

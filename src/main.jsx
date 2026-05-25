@@ -61,6 +61,7 @@ function App() {
   const [pushStatus, setPushStatus] = useState('default');
   const [pushMessage, setPushMessage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [isFriendTyping, setIsFriendTyping] = useState(false);
   const [draft, setDraft] = useState('');
   const [callOpen, setCallOpen] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -69,7 +70,26 @@ function App() {
   const [localStream, setLocalStream] = useState(null);
   const videoRef = useRef(null);
   const chatBodyRef = useRef(null);
+  const messagesRef = useRef([]);
   const messagesRequestRef = useRef(0);
+  const typingTimerRef = useRef(null);
+  const lastTypingSentRef = useRef(0);
+
+  useEffect(() => {
+    function syncViewportHeight() {
+      const height = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--app-height', `${height}px`);
+    }
+
+    syncViewportHeight();
+    window.visualViewport?.addEventListener('resize', syncViewportHeight);
+    window.addEventListener('resize', syncViewportHeight);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', syncViewportHeight);
+      window.removeEventListener('resize', syncViewportHeight);
+    };
+  }, []);
 
   useEffect(() => {
     async function boot() {
@@ -96,6 +116,7 @@ function App() {
   useEffect(() => {
     if (!activeFriend) {
       setMessages([]);
+      setIsFriendTyping(false);
       return undefined;
     }
 
@@ -103,20 +124,31 @@ function App() {
     let timer = null;
 
     async function pollMessages() {
-      await loadMessages(activeFriend.id, true);
+      await loadMessages(activeFriend.id, { silent: true, incremental: true });
       if (!stopped) {
-        timer = window.setTimeout(pollMessages, 900);
+        timer = window.setTimeout(pollMessages, document.visibilityState === 'visible' ? 1400 : 5000);
       }
     }
 
-    loadMessages(activeFriend.id);
-    timer = window.setTimeout(pollMessages, 900);
+    setMessages([]);
+    setIsFriendTyping(false);
+    loadMessages(activeFriend.id, { incremental: false });
+    timer = window.setTimeout(pollMessages, 1400);
 
     return () => {
       stopped = true;
       if (timer) window.clearTimeout(timer);
+      if (typingTimerRef.current) {
+        window.clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+      sendTypingState(false).catch(() => {});
     };
   }, [activeFriend]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (!profile) return undefined;
@@ -196,7 +228,10 @@ function App() {
     setIncomingRequests(data.incoming || []);
     setOutgoingRequests(data.outgoing || []);
     setActiveFriend((current) => {
-      if (current && data.friends.some((friend) => friend.id === current.id)) return current;
+      if (current) {
+        const updated = data.friends.find((friend) => friend.id === current.id);
+        if (updated) return updated;
+      }
       return data.friends[0] || null;
     });
   }
@@ -234,19 +269,68 @@ function App() {
     }
   }
 
-  async function loadMessages(friendId, silent = false) {
+  function getLastServerMessageId() {
+    return messagesRef.current.reduce((max, message) => {
+      const id = Number(message.id);
+      return Number.isFinite(id) ? Math.max(max, id) : max;
+    }, 0);
+  }
+
+  function mergeMessages(currentMessages, incomingMessages) {
+    if (!incomingMessages.length) return currentMessages;
+    const seen = new Set(currentMessages.map((message) => String(message.id)));
+    return [...currentMessages, ...incomingMessages.filter((message) => !seen.has(String(message.id)))];
+  }
+
+  async function loadMessages(friendId, options = {}) {
+    const { silent = false, incremental = false } = options;
     const requestId = ++messagesRequestRef.current;
+    const afterId = incremental ? getLastServerMessageId() : 0;
     try {
-      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}&t=${Date.now()}`, {
+      const data = await api(`/api/messages?friendId=${encodeURIComponent(friendId)}&afterId=${afterId}&t=${Date.now()}`, {
         method: 'POST',
         body: JSON.stringify({ action: 'list' })
       });
       if (requestId === messagesRequestRef.current) {
-        setMessages(data.messages);
+        setIsFriendTyping(Boolean(data.friendTyping));
+        setMessages((current) => (incremental ? mergeMessages(current, data.messages) : data.messages));
       }
     } catch (error) {
       if (!silent) setFriendError(error.message);
     }
+  }
+
+  async function sendTypingState(typing) {
+    if (!activeFriend) return;
+    await api(`/api/messages?friendId=${encodeURIComponent(activeFriend.id)}`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'typing', typing })
+    });
+  }
+
+  function announceTyping(value) {
+    if (!activeFriend) return;
+    const hasText = value.trim().length > 0;
+
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+
+    if (!hasText) {
+      sendTypingState(false).catch(() => {});
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTypingSentRef.current > 1800) {
+      lastTypingSentRef.current = now;
+      sendTypingState(true).catch(() => {});
+    }
+
+    typingTimerRef.current = window.setTimeout(() => {
+      sendTypingState(false).catch(() => {});
+    }, 1800);
   }
 
   async function sendMessage(event) {
@@ -273,7 +357,8 @@ function App() {
       setMessages((current) =>
         current.map((message) => (message.id === optimisticMessage.id ? data.message : message))
       );
-      await loadMessages(activeFriend.id, true);
+      await sendTypingState(false).catch(() => {});
+      await loadMessages(activeFriend.id, { silent: true, incremental: true });
     } catch (error) {
       setFriendError(error.message);
       setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
@@ -612,12 +697,23 @@ function App() {
               </div>
             </article>
           ))}
+          {activeFriend && isFriendTyping && (
+            <div className="typing-indicator" aria-live="polite">
+              <span>{activeFriend.username} печатает</span>
+              <i />
+              <i />
+              <i />
+            </div>
+          )}
         </div>
 
         <form className="message-bar" onSubmit={sendMessage}>
           <input
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              announceTyping(event.target.value);
+            }}
             placeholder={activeFriend ? 'Сообщение' : 'Сначала добавь друга'}
             disabled={!activeFriend}
             aria-label="Сообщение"
