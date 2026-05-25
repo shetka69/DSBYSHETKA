@@ -76,6 +76,7 @@ function App() {
   const chatBodyRef = useRef(null);
   const messagesRef = useRef([]);
   const messagesRequestRef = useRef(0);
+  const eventsRef = useRef(null);
   const typingTimerRef = useRef(null);
   const lastTypingSentRef = useRef(0);
 
@@ -135,12 +136,25 @@ function App() {
 
     setMessages([]);
     setIsFriendTyping(false);
-    loadMessages(activeFriend.id, { incremental: false });
-    timer = window.setTimeout(pollMessages, 1400);
+    loadMessages(activeFriend.id, { incremental: false })
+      .then(() => {
+        if (stopped) return;
+        const connected = openMessageEvents(activeFriend.id);
+        if (!connected) {
+          timer = window.setTimeout(pollMessages, 1400);
+        }
+      })
+      .catch(() => {
+        if (!stopped) timer = window.setTimeout(pollMessages, 1800);
+      });
 
     return () => {
       stopped = true;
       if (timer) window.clearTimeout(timer);
+      if (eventsRef.current) {
+        eventsRef.current.close();
+        eventsRef.current = null;
+      }
       if (typingTimerRef.current) {
         window.clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;
@@ -287,6 +301,46 @@ function App() {
     if (!incomingMessages.length) return currentMessages;
     const seen = new Set(currentMessages.map((message) => String(message.id)));
     return [...currentMessages, ...incomingMessages.filter((message) => !seen.has(String(message.id)))];
+  }
+
+  function openMessageEvents(friendId) {
+    if (!window.EventSource) return false;
+
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return false;
+
+    const afterId = getLastServerMessageId();
+    const stream = new EventSource(
+      `/api/events?friendId=${encodeURIComponent(friendId)}&afterId=${afterId}&token=${encodeURIComponent(token)}`
+    );
+
+    eventsRef.current = stream;
+
+    stream.addEventListener('messages', (event) => {
+      const data = JSON.parse(event.data);
+      if (data.messages?.length) {
+        setMessages((current) => mergeMessages(current, data.messages));
+      }
+    });
+
+    stream.addEventListener('typing', (event) => {
+      const data = JSON.parse(event.data);
+      setIsFriendTyping(Boolean(data.typing));
+    });
+
+    stream.onerror = () => {
+      stream.close();
+      if (eventsRef.current === stream) {
+        eventsRef.current = null;
+        window.setTimeout(() => {
+          if (activeFriend?.id === friendId && !eventsRef.current) {
+            openMessageEvents(friendId) || loadMessages(friendId, { silent: true, incremental: true });
+          }
+        }, 1800);
+      }
+    };
+
+    return true;
   }
 
   async function loadMessages(friendId, options = {}) {

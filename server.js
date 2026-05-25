@@ -13,6 +13,7 @@ const port = Number(process.env.PORT || process.env.AMVERA_PORT || 8080);
 
 const apiRoutes = new Map([
   ['/api/account', 'account.js'],
+  ['/api/events', 'events.js'],
   ['/api/friends', 'friends.js'],
   ['/api/login', 'login.js'],
   ['/api/me', 'me.js'],
